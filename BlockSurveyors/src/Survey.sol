@@ -11,24 +11,25 @@ contract Survey {
     address private owner;
     uint256 public id;
     mapping (address => bool) public hasVoted; //mapping of addresses to whether or not they have voted (true or false
-    string surveyName; // name of the survey
-    string question; // the question the user asks
-    string[] solutions; // Written multiple choice options
+    string public surveyName; // name of the survey
+    string public question; // the question the user asks
+    string[] public solutions; // Written multiple choice options
     uint256[] answers; // collect answers
-    uint256 numAllowedResponces; // how many people have answered
-    uint256 startTime; // when the survey opens
-    uint256 endTime; // when the survey closes
+    uint256 public numAllowedResponces; // how many people have answered
+    uint256 public startTime; // when the survey opens
+    uint256 public endTime; // when the survey closes
     uint256 ethReward; // amount of reward given to users
 
     modifier onlyOwner {
         require(msg.sender == owner, 'call exclusive to owner');
+        _;
     }
 
-    constructor(string memory _surveyName, 
+    constructor (string memory _surveyName, 
                 string memory _question, 
                 string[] memory _solutions, 
                 uint256 _duration, 
-                uint256 _numAllowedResponces) {
+                uint256 _numAllowedResponces) payable{
         owner = msg.sender;         //initialize all members of the survey
         surveyName = _surveyName;
         question = _question;
@@ -60,11 +61,12 @@ contract Survey {
     }
 
     // Function to get the results of the survey
-    function getResults() public view returns (uint256[] memory) {
-        require(block.timestamp > endTime, "Survey is still active");
+    function viewSurvey() public pure returns (string memory) {
+        
 
-        //print the question followed by its number of votes in answers
-
+        return "Hello world";
     }
+
+
 }
 
