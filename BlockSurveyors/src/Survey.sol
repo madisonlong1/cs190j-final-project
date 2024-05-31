@@ -7,7 +7,6 @@ contract Survey {
     
     // getResults()
     
-    
     address private owner;
     uint256 public id;
     mapping (address => bool) public hasVoted; //mapping of addresses to whether or not they have voted (true or false
@@ -63,7 +62,6 @@ contract Survey {
     // Function to get the results of the survey
     function viewSurvey() public pure returns (string memory) {
         
-
         return "Hello world";
     }
 
