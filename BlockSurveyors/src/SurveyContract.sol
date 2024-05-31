@@ -19,10 +19,11 @@ contract SmartSurvey {
     }
 
     // Mapping to a survey (list?)
+    //Here, do we need to map it a survey
     mapping(string => Survey) private user_surveys; //name of survey maps to 
 
     // Event to be emitted when a new user registers
-    event UserRegistered(string name, address userAddress);
+    event UserRegistered(string name, address userAddress);//do we need this line?
 
     // Mapping to store registered users for login
     mapping(address => registered_user) private users; //keep track of all registered users
@@ -73,7 +74,12 @@ contract SmartSurvey {
     function viewSurvey(string memory _surveyName) public {
         Survey survey = user_surveys[_surveyName];
         require(address(survey) != address(0), "Survey does not exist");
-
+        //I try to fix the compiler error from the lines below in this function, but it's not working 
+        //even after I make some of the member public. I think a way to fix it is to implement
+        //view() in Survey contract not in the master contract.
+        //
+        // In this function, we can call survey.viewSurvey() in another contract which returns a string,
+        // then we can do emit SurveyMessage(msg.sender, SurveyDescription);
         string memory surveyName = survey.surveyName();
         string memory question = survey.question();
         string[] memory solutions = survey.solutions();
@@ -81,11 +87,17 @@ contract SmartSurvey {
         uint256 endTime = survey.endTime();
         uint256 numAllowedResponses = survey.numAllowedResponces();
 
-        emit SurveyDetails(surveyName, question, solutions, startTime, endTime, numAllowedResponses); //print the  information for the user 
+        emit SurveyDetails(_surveyName, question, solutions, startTime, endTime, numAllowedResponses); //print the  information for the user 
+
+        
     }
     
+
     function vote(string memory _surveyName, uint256 option) public {
-        require(user_surveys[_surveyName].hasVoted[msg.sender] == false, "User has already voted");
+        //Try to fix this function here but fail, one way to fix it is to let survey.vote() check for us,
+        //if a votw is invalid it returns a fail message, if valid return a sucess message
+        //this function just emit that message to msg.sender
+        require(user_surveys[_surveyName].hasVoted(msg.sender) == false, "User has already voted");
         require(user_surveys[_surveyName] != address(0), "Survey does not exist");
         require(user_surveys[_surveyName].numAllowedResponces() > 0, "Survey is full");
         require(option < user_surveys[_surveyName].solutions().length, "Invalid option");
