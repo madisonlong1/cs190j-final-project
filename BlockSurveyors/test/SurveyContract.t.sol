@@ -57,7 +57,7 @@ contract SmartSurveyTest is Test {
         options[1] = "Option 2";
 
         vm.startPrank(alice);
-        surveyContract.createSurvey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2);
         vm.stopPrank();
 
         // Retrieve survey data
