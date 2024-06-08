@@ -7,11 +7,19 @@ pragma solidity ^0.8.24;
 
 
 contract SmartSurvey {
-   
+   bool internal locked; //for re entrancy guard
     struct registered_user{
         address userAddress;
         string username;
         uint password;
+    }
+
+    
+    modifier noReentrancy() {
+        require(!locked, "No re-entrancy");
+        locked = true;
+        _;
+        locked = false;
     }
 
     struct Survey {
@@ -27,6 +35,7 @@ contract SmartSurvey {
         uint256 startTime; // when the survey opens
         uint256 endTime; // when the survey closes
         uint256 ethReward; // amount of reward given to users
+        address[] voters; // list of voters
     }
     // modifier onlyOwner {
     //     require(msg.sender == owner, 'call exclusive to owner');
@@ -55,7 +64,7 @@ contract SmartSurvey {
         uint256 ethReward
     );
    
-    function registerUser(string memory _username, uint256 _password) public {
+    function registerUser(string memory _username, uint256 _password) public noReentrancy {
         require(users[msg.sender].userAddress == address(0), "User already registered"); // make sure user is not already registered
         require(bytes(_username).length > 0, "Username cannot be empty"); // make sure username is not empty
     
@@ -75,29 +84,30 @@ contract SmartSurvey {
     } 
     
 
-    function vote(string memory _surveyName, uint256 option) public {
+    function vote(string memory _surveyName, uint256 option) public noReentrancy {
         Survey storage thisSurvey = user_surveys[_surveyName];
-        
+        require(thisSurvey.numAllowedResponses > 0, "Survey is closed");
         require(!thisSurvey.hasVoted[msg.sender], "User has already voted");
         require(thisSurvey.owner != address(0), "Survey does not exist");//need to be fixed
-        require(thisSurvey.numAllowedResponses > 0, "Survey is closed");
         require(option < thisSurvey.solutions.length, "Invalid option");
         require(thisSurvey.endTime > block.timestamp, "Survey is closed");
         
         thisSurvey.hasVoted[msg.sender] = true; //mark the user as having voted
+        thisSurvey.voters.push(msg.sender); //add the user to the list of voters (not implemented yet
         thisSurvey.answers[option] += 1; //increment the number of votes for the option
-        thisSurvey.numAllowedResponses = thisSurvey.numAllowedResponses + 1;//decrement the number of allowed responses remaining
+        thisSurvey.numAllowedResponses = thisSurvey.numAllowedResponses - 1;//decrement the number of allowed responses remaining
         
         if (thisSurvey.numAllowedResponses == 0) { //if the number of allowed responses is 0, close the survey
             thisSurvey.endTime = block.timestamp;
         }
     }  
 
-    function endNow(string memory _surveyName) public  {
+    function endNow(string memory _surveyName) public noReentrancy{
         Survey storage thisSurvey = user_surveys[_surveyName];
         require(msg.sender == thisSurvey.owner, 'only the owner can end a survey early');
         thisSurvey.numAllowedResponses = 0;
         thisSurvey.endTime = block.timestamp;
+        sendReward(_surveyName);
     }
 
 
@@ -107,7 +117,7 @@ contract SmartSurvey {
                           string[] memory _solutions, 
                           uint256 _duration, 
                           uint256 _numAllowedResponses) 
-        public payable {
+        public noReentrancy payable {
         require(users[msg.sender].userAddress != address(0), "User not registered"); //make this function is exclusivly accessable to those who are registered already
         
         require(bytes(_surveyName).length > 0, "Survey name cannot be empty");
@@ -132,6 +142,7 @@ contract SmartSurvey {
         thisSurvey.startTime = block.timestamp;
         thisSurvey.endTime = block.timestamp + _duration;
         thisSurvey.ethReward = msg.value;
+        thisSurvey.voters = new address[](0);
         
         balances[_surveyName] = msg.value;
     }
@@ -168,14 +179,24 @@ contract SmartSurvey {
                 );
     }
 
-    // function sendReward() {
-    //     //needs to be completed
-    // }
+    function sendReward(string memory _surveyName) private {
+        //needs to be completed
+        Survey storage thisSurvey = user_surveys[_surveyName];
+        uint256 numVoters = thisSurvey.voters.length;
+        require(numVoters > 0, "No voters to distribute rewards");
+        balances[_surveyName] = 0;
+        uint256 amount = balances[_surveyName] / numVoters;
+        for (uint256 i = 0; i < numVoters; i++) {
+            (bool r, ) = thisSurvey.voters[i].call{value: amount}("");
+        require(r, "Failed to release funds");
+        }
+        
+    }
 
-     
-//////////////////////////////////////////////////////// Survey structure
-    
-    //////////////////////////////////////////////////////////////// End Survey structure
+       receive() external payable {
+        revert("Ether not accepted directly");
+    }
+
 
   
 }
