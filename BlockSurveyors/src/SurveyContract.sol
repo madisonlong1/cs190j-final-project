@@ -180,18 +180,24 @@ contract SmartSurvey {
     }
 
     function sendReward(string memory _surveyName) private {
-        //needs to be completed
-        Survey storage thisSurvey = user_surveys[_surveyName];
-        uint256 numVoters = thisSurvey.voters.length;
-        require(numVoters > 0, "No voters to distribute rewards");
-        balances[_surveyName] = 0;
-        uint256 amount = balances[_surveyName] / numVoters;
-        for (uint256 i = 0; i < numVoters; i++) {
-            (bool r, ) = thisSurvey.voters[i].call{value: amount}("");
-        require(r, "Failed to release funds");
+    Survey storage thisSurvey = user_surveys[_surveyName];
+    uint256 numVoters = thisSurvey.voters.length;
+    require(numVoters > 0, "No voters to distribute rewards");
+    uint256 rewardAmount = balances[_surveyName];
+    uint256 amountPerVoter = rewardAmount / numVoters;
+
+    // Set the balance and ethReward to zero after calculating amountPerVoter
+    balances[_surveyName] = 0;
+    thisSurvey.ethReward = 0;
+
+    for (uint256 i = 0; i < numVoters; i++) {
+        (bool success, ) = thisSurvey.voters[i].call{value: amountPerVoter, gas: 5000}("");
+        //emit RewardSent(thisSurvey.voters[i], amountPerVoter, success); // Log the result
+        if (!success) {
+            revert("Failed to release funds to voter");
         }
-        
     }
+}
 
        receive() external payable {
         revert("Ether not accepted directly");

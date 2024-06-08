@@ -146,9 +146,9 @@ contract SmartSurveyTest is Test {
         string[] memory options = new string[](2);
         options[0] = "no";
         options[1] = "yes";
-
+        deal(charlie, 10 ether); //charlie will be paid for his participation
         vm.startPrank(charlie);
-        surveyContract.create_survey{value: 5 ether}("Survey 2", "Do you support more funding for local schools?", options, 12, 2);
+        surveyContract.create_survey{value: 10 ether}("Survey 2", "Do you support more funding for local schools?", options, 12, 2);
         surveyContract.vote("Survey 2", 1);
         vm.stopPrank();
 
@@ -179,8 +179,14 @@ contract SmartSurveyTest is Test {
 
         assertEq(endTime <= block.timestamp, true); // ensure the survey has ended
         assertEq(answers[0], 0);
-        assertEq(answers[1], 2);
-        //we have ensured only 2 votes were cast because the survey ended
+        assertEq(answers[1], 2); //we have ensured only 2 votes were cast because the survey ended
+        assertEq(ethReward, 0 ether); //check the reward has been paid out
+        uint256 bal = address(surveyContract).balance;
+        assertEq(bal, 0); //check the contract has no balance
+        uint256 balCharlie = charlie.balance;
+        uint256 balAlice = alice.balance;
+        assertEq(balCharlie, 5 ether); //check charlie has been paid for his particpation (5ether)
+        assertEq(balAlice, 15 ether); //check alice has been paid for her particpation (5ether plus the 10 she already had)
     }
 
     //test if we can make a survey with no reward
@@ -250,14 +256,17 @@ contract SmartSurveyTest is Test {
 
         // Deploy the reentrancy attacker contract
         reentrancyAttacker attacker = new reentrancyAttacker(surveyContract, "BlockChainClass");
+        deal(address(attacker), 100 ether); //pay the attacker so it can preform the attack and attempt to repeatedly withdraw the reward
+        vm.startPrank(address(attacker));
         vm.expectRevert();
-        uint256 attackerEndAmount = attacker.attack{value: 100 ether}();// attacker will attempt to repeatedly withdraw the reward from the survey contract
+        attacker.attack{value: 100 ether}();// attacker will attempt to repeatedly withdraw the reward from the survey contract
+        vm.stopPrank();
 
         //Check the contract's balance and state
         uint256 balance = address(surveyContract).balance;
-        //uint256 attackerBalance = address(attacker).balance;
-        assertEq(balance, 50 ether, "Balance should be 50 ether after attempted reentrancy attack");
-        assertEq(attackerEndAmount, 100 ether, "attacker gets 100 ether"); 
+        uint256 attackerBalance = address(attacker).balance;
+        assertEq(balance, 50 ether, "Balance should be 50 ether after attempted reentrancy attack"); // the contract should still have 50 ether from alice as her poll is not over
+        assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
 
     }    
     
