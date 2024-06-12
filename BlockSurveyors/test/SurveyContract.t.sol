@@ -267,9 +267,17 @@ contract SmartSurveyTest is Test {
         uint256 attackerBalance = address(attacker).balance;
         assertEq(balance, 50 ether, "Balance should be 50 ether after attempted reentrancy attack"); // the contract should still have 50 ether from alice as her poll is not over
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
-
     }    
-    
 
+   
 
+    //2) write 5 more functional test cases // 1) expired survey ends when call view and vote //Yicong
+    //test ViewSurvey, sendreward, edgecases(things like invalid information)
+
+    //3) 7 write More penetration test cases      //Sherry-3  Jason-3, Yicong-1
+    // Denial of Service, accessing private data, front running
+
+    //4) README deployment instructions and Documentation, see instructions for details
+
+    //5) Report (2 pages each)
 }
