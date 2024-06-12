@@ -4,101 +4,280 @@ pragma solidity ^0.8.24;
 import {Test, console} from "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 
-import {Survey} from "../src/Survey.sol";
 import {SmartSurvey} from "../src/SurveyContract.sol";
 
-contract SmartSurveyTest is Test {
+import {SelfDestructAttacker} from "../src/Attacker1.sol";
+import {overflowAttacker} from "../src/Attacker2.sol";
+import {reentrancyAttacker} from "../src/Attacker3.sol";
 
-    SmartSurvey public master; //master contract
-        
+contract SmartSurveyTest is Test {
+    SmartSurvey public surveyContract;
+
     address alice = address(0x10);
     address bob = address(0x20);
-    address charlie = address(0x13);
-    string[] public option;
+    address charlie = address(0x30);
 
     function setUp() public {
-        master = new SmartSurvey();
-        address alice = address(0x10);
-        address bob = address(0x20);
-        deal(alice, 5 ether);
-        deal(bob, 5 ether);
-    }
+        surveyContract = new SmartSurvey();
 
+        deal(alice, 10 ether);
+        deal(bob, 10 ether);
+        deal(charlie, 10 ether);
+
+        // Register alice
+        vm.startPrank(alice);
+        surveyContract.registerUser("alice", 1234);
+        vm.stopPrank();
+
+        // Register bob
+        vm.startPrank(bob);
+        surveyContract.registerUser("bob", 5678);
+        vm.stopPrank();
+
+        // Register charlie
+        vm.startPrank(charlie);
+        surveyContract.registerUser("charlie1", 9876);
+        vm.stopPrank();
+    }
+    // test if the register user works properly
     function test_registerUser() public {
-        //register user
-        vm.startPrank(alice);
-        master.registerUser("Alice", 1234);
-        vm.stopPrank();
-        //assertEq(address(master).users[0x10].username, "Alice", "Alice is not registered");
+
+        // Retrieve user data //use the getUser function to get the user data
+        (address userAddress, string memory username, uint256 password) = surveyContract.getUser(alice);
+        assertEq(userAddress, alice);
+        assertEq(username, "alice");
+        assertEq(password, 1234);      
+
+        // Retrieve user data
+        (userAddress, username, password) = surveyContract.getUser(bob);
+        assertEq(userAddress, bob);
+        assertEq(username, "bob");
+        assertEq(password, 5678);
+
+        (userAddress, username, password) = surveyContract.getUser(charlie);
+        assertEq(userAddress, charlie);
+        assertEq(username, "charlie1");
+        assertEq(password, 9876);
     }
 
-    function test_create_survey() public {
-        //unregistered user call create()
-        vm.startPrank(bob);       
-        option.push("yes");
-        option.push("no");
-        master.create_survey{value: 5}("BobTest", "did you pass?", option, 5, 3);
-        //vm.expectRevert("User is not registered");             
+    //checks if create survey works properly
+    function test_createSurvey() public {
+        string[] memory options = new string[](2);
+        options[0] = "Option 1";
+        options[1] = "Option 2";
+
+        vm.startPrank(alice); //alice will create survey 1 ans we will test if it actually worked
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2);
         vm.stopPrank();
 
-        //registered user call create()
+        // Retrieve survey data
+        (
+            address owner,
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.getSurvey("Survey 1"); //get the full survey data
+
+        //now we check if the survey data is correct
+        assertEq(owner, alice);
+        assertEq(surveyName, "Survey 1");
+        assertEq(question, "What is your favorite color?");
+        assertEq(surveyOptions[0], "Option 1");
+        assertEq(surveyOptions[1], "Option 2");
+        assertEq(answers.length, 2);
+        assertEq(numAllowedResponses, 2);
+        assertEq(ethReward, 1 ether); //
+    }
+
+    //test the vote function 
+    function test_vote() public {
+          string[] memory options = new string[](3);
+        options[0] = "red";
+        options[1] = "blue";
+        options[2] = "green";
+
         vm.startPrank(alice);
-        master.registerUser("Alice", 1234);
-        master.create_survey{value: 5}("AliceTest", "did you pass?", option, 5, 3);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 4);
+        surveyContract.vote("Survey 1", 1);
+        vm.stopPrank();
+        //Alice votes for blue
+
+        vm.startPrank(bob);
+        surveyContract.vote("Survey 1", 1);
+        vm.stopPrank();
+        //Bob votes for blue
+
+        vm.startPrank(charlie);
+        surveyContract.vote("Survey 1", 2);
+        vm.stopPrank();
+        //Charlie votes for green
+
+        (
+            address owner,
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.getSurvey("Survey 1");
+
+        assertEq(owner, alice);
+        assertEq(surveyName, "Survey 1");
+        assertEq(question, "What is your favorite color?");
+        assertEq(surveyOptions[0], "red");
+        assertEq(surveyOptions[1], "blue");
+        assertEq(surveyOptions[2], "green");
+        assertEq(answers[0], 0);
+        assertEq(answers[1],2); //check there are 2 votes for blue (alice and bob)
+        assertEq(answers[2],1); //check there is 1 vote for green (charlie)
+
+    }
+
+    //test endnow
+    function test_Endnow() public {
+        string[] memory options = new string[](2);
+        options[0] = "no";
+        options[1] = "yes";
+        deal(charlie, 10 ether); //charlie will be paid for his participation
+        vm.startPrank(charlie);
+        surveyContract.create_survey{value: 10 ether}("Survey 2", "Do you support more funding for local schools?", options, 12, 2);
+        surveyContract.vote("Survey 2", 1);
         vm.stopPrank();
 
+        vm.startPrank(alice);
+        surveyContract.vote("Survey 2", 1);
+        vm.stopPrank();
+
+        vm.startPrank(charlie);
+        surveyContract.endNow("Survey 2");
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        vm.expectRevert(bytes("Survey is closed")); 
+        surveyContract.vote("Survey 2", 1);
+        vm.stopPrank();
+
+        (
+            address owner,
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.getSurvey("Survey 2");
+
+        assertEq(endTime <= block.timestamp, true); // ensure the survey has ended
+        assertEq(answers[0], 0);
+        assertEq(answers[1], 2); //we have ensured only 2 votes were cast because the survey ended
+        assertEq(ethReward, 0 ether); //check the reward has been paid out
+        uint256 bal = address(surveyContract).balance;
+        assertEq(bal, 0); //check the contract has no balance
+        uint256 balCharlie = charlie.balance;
+        uint256 balAlice = alice.balance;
+        assertEq(balCharlie, 5 ether); //check charlie has been paid for his particpation (5ether)
+        assertEq(balAlice, 15 ether); //check alice has been paid for her particpation (5ether plus the 10 she already had)
+    }
+
+    //test if we can make a survey with no reward
+    function test_no_reward() public {
+        string[] memory options = new string[](2);
+        options[0] = "dog";
+        options[1] = "cat";
+
+        vm.startPrank(alice);
+        vm.expectRevert(bytes("Reward must be greater than 0")); //we expect a revert because the survey 
+                                                                 //is being called with missing paramertrs (the eth payment)
+        surveyContract.create_survey("Survey 1", "Are you a Dog person, or a Cat person?", options, 10, 12);
+        vm.stopPrank();
+    }
         
-        //assertEq(maste, 2, "Winner is not Charlie(2)");
-        //assertEq(master.users(address(0x10)), "Alice", "User is not registered");
+    //////////////////////////////////////////////////////////////// PENETRATION TESTS BELOW THIS LINE
+
+    function test_selfDestruct() public{
+
+        //setup the survey
+        string[] memory options = new string[](2); 
+        options[0] = "no";
+        options[1] = "yes";
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, 12, 2);
+        vm.stopPrank();
+
+        //make an attacker and use it
+        SelfDestructAttacker attackerSD = new SelfDestructAttacker(surveyContract); // make an attacker
+        address attackerAddr = address(attackerSD); //get attackers address
+       
+        deal(attackerAddr, 1 ether); //pay the attacker
+        vm.startPrank(attackerAddr);
+        attackerSD.attack();
+        vm.stopPrank();
+        uint256 balance = address(surveyContract).balance;
+        require(balance > 10, "The contract did not lose any ether"); //the attacker was unable rob us
+       
     }
 
-    // function test_attack() public {
+    function test_timeStampManip() public {
+        string[] memory options = new string[](2); 
+        options[0] = "no";
+        options[1] = "yes";
 
+        //alice will attempt to create a survey with a start time that is in the past, this action will be reverted
+        vm.startPrank(alice);
+        vm.expectRevert();
+        uint256 overflow = type(uint256).max + 1 - block.timestamp; //set the start time to 10 seconds from now
+        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, overflow, 3);
+        vm.stopPrank();
+    }
 
-    // }
-    //create smartSurvey
-    //create suvey
-    //view survey
+    function testReentrancyAttack() public {
+        // This test sees the attacker contract register itself, create a survey, vote on the survey, and then end the survey early
+        // The attacker contract will then attempt to re-enter the survey contract and claim the reward repeatedly 
+        // this will steal from the master contracts "bank"
+      
+        //the master contract will store 50 ether from alice
+        vm.startPrank(alice);
+        deal(alice, 50 ether);
+        string[] memory options = new string[](2); 
+        options[0] = "no";
+        options[1] = "yes";
+        surveyContract.create_survey{value: 50 ether}("Local School Poll", "Do you support more funding for local schools?", options, 10, 3);
+        vm.stopPrank();
 
-    
+        // Deploy the reentrancy attacker contract
+        reentrancyAttacker attacker = new reentrancyAttacker(surveyContract, "BlockChainClass");
+        deal(address(attacker), 100 ether); //pay the attacker so it can preform the attack and attempt to repeatedly withdraw the reward
+        vm.startPrank(address(attacker));
+        vm.expectRevert();
+        attacker.attack{value: 100 ether}();// attacker will attempt to repeatedly withdraw the reward from the survey contract
+        vm.stopPrank();
 
-    
-    // Poll public poll;
-    // Attacker public attacker;
+        //Check the contract's balance and state
+        uint256 balance = address(surveyContract).balance;
+        uint256 attackerBalance = address(attacker).balance;
+        assertEq(balance, 50 ether, "Balance should be 50 ether after attempted reentrancy attack"); // the contract should still have 50 ether from alice as her poll is not over
+        assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
+    }    
 
-    // address alice = address(0x10);
-    // address bob = address(0x11);
-    // address charlie = address(0x13);
+   
 
-    // function setUp() public {
-    //     poll = new Poll();
-    //     attacker = new Attacker(poll);
+    //2) write 5 more functional test cases // 1) expired survey ends when call view and vote //Yicong
+    //test ViewSurvey, sendreward, edgecases(things like invalid information)
 
-    //     deal(address(poll), 0 ether);
-    //     deal(address(attacker), 10 ether);
+    //3) 7 write More penetration test cases      //Sherry-3  Jason-3, Yicong-1
+    // Denial of Service, accessing private data, front running
 
-    //     deal(alice, 100 ether);
-    //     deal(bob, 100 ether);
-    //     deal(charlie, 0 ether);
-    // }
+    //4) README deployment instructions and Documentation, see instructions for details
 
-    // function test_attack() public {
-
-    //     vm.startPrank(alice);
-    //     poll.deposit{value: 100 ether}();
-    //     poll.vote(0);
-    //     vm.stopPrank();
-
-    //     vm.startPrank(bob);
-    //     poll.deposit{value: 100 ether}();
-    //     poll.vote(1);
-    //     vm.stopPrank();
-
-    //     attacker.attack();
-
-    //     vm.warp(block.timestamp+1);
-    //     assertEq(poll.winner(), 2, "Winner is not Charlie(2)");
-    // }
-
+    //5) Report (2 pages each)
 }
-
