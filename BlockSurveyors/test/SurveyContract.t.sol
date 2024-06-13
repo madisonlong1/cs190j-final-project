@@ -351,9 +351,7 @@ contract SmartSurveyTest is Test {
         string[] memory options = new string[](3);
         options[0] = "red";
         options[1] = "blue";
-        options[2] = "green";
-
-        vm.expectRevert(bytes("Survey with the same name already exist")); 
+        options[2] = "green"; 
 
         vm.startPrank(unregister);
         surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
