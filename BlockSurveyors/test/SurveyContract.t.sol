@@ -16,6 +16,7 @@ contract SmartSurveyTest is Test {
     address alice = address(0x10);
     address bob = address(0x20);
     address charlie = address(0x30);
+    address unregister = address(0x40);
 
     function setUp() public {
         startTime = block.timestamp;
@@ -24,6 +25,7 @@ contract SmartSurveyTest is Test {
         deal(alice, 10 ether);
         deal(bob, 10 ether);
         deal(charlie, 10 ether);
+        deal(unregister, 10 ether);
 
         // Register alice
         vm.startPrank(alice);
@@ -342,9 +344,6 @@ contract SmartSurveyTest is Test {
         vm.startPrank(bob);
         surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
         vm.stopPrank();
-
-       
-
     }
 
     //not registered user can't create
@@ -356,7 +355,7 @@ contract SmartSurveyTest is Test {
 
         vm.expectRevert(bytes("Survey with the same name already exist")); 
 
-        vm.startPrank(alice);
+        vm.startPrank(unregister);
         surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
         vm.stopPrank();
 
