@@ -12,12 +12,13 @@ import {reentrancyAttacker} from "../src/Attacker3.sol";
 
 contract SmartSurveyTest is Test {
     SmartSurvey public surveyContract;
-
+    uint startTime;
     address alice = address(0x10);
     address bob = address(0x20);
     address charlie = address(0x30);
 
     function setUp() public {
+        startTime = block.timestamp;
         surveyContract = new SmartSurvey();
 
         deal(alice, 10 ether);
@@ -148,7 +149,7 @@ contract SmartSurveyTest is Test {
         options[1] = "yes";
         deal(charlie, 10 ether); //charlie will be paid for his participation
         vm.startPrank(charlie);
-        surveyContract.create_survey{value: 10 ether}("Survey 2", "Do you support more funding for local schools?", options, 12, 2);
+        surveyContract.create_survey{value: 10 ether}("Survey 2", "Do you support more funding for local schools?", options, 100000, 2);
         surveyContract.vote("Survey 2", 1);
         vm.stopPrank();
 
@@ -201,7 +202,167 @@ contract SmartSurveyTest is Test {
         surveyContract.create_survey("Survey 1", "Are you a Dog person, or a Cat person?", options, 10, 12);
         vm.stopPrank();
     }
-        
+    //test view survey
+    function test_view_survey() public {
+        string[] memory options = new string[](3);
+        options[0] = "red";
+        options[1] = "blue";
+        options[2] = "green";
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        vm.stopPrank();
+
+        vm.startPrank(charlie);
+        (
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.viewSurvey("Survey 1");
+        vm.stopPrank();
+
+        assertEq(keccak256(abi.encodePacked(surveyName)) == keccak256(abi.encodePacked("Survey 1")), true); // ensure the survey has ended
+        assertEq(keccak256(abi.encodePacked(question)) == keccak256(abi.encodePacked("What is your favorite color?")), true);
+        assertEq(keccak256(abi.encodePacked(surveyOptions[0])) == keccak256(abi.encodePacked("red")), true);
+        assertEq(keccak256(abi.encodePacked(surveyOptions[1])) == keccak256(abi.encodePacked("blue")), true);
+        assertEq(keccak256(abi.encodePacked(surveyOptions[2])) == keccak256(abi.encodePacked("green")), true);
+        assertEq(ethReward, 1 ether);
+
+    }
+    //test auto end when vote for a survey  
+    function test_vote_autoEnd() public {
+        string[] memory options = new string[](3);
+        options[0] = "red";
+        options[1] = "blue";
+        options[2] = "green";
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        surveyContract.vote("Survey 1", 1);
+        vm.stopPrank();
+
+        vm.warp(startTime + 1 days);
+        //vm.expectRevert(bytes("Survey is expired"));
+
+        vm.startPrank(charlie);
+        surveyContract.vote("Survey 1", 1);
+        vm.stopPrank();
+
+        (
+            address owner,
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.getSurvey("Survey 1");
+
+        assertEq(endTime <= block.timestamp, true); // ensure the survey has ended
+        assertEq(answers[0], 0);
+        assertEq(answers[1], 1); //we have ensured only 2 votes were cast because the survey ended
+        assertEq(ethReward, 0 ether); //check the reward has been paid out
+        uint256 bal = address(surveyContract).balance;
+        assertEq(bal, 0); //check the contract has no balance
+        uint256 balBob = bob.balance;
+        uint256 balAlice = alice.balance;
+        assertEq(balAlice, 9 ether); 
+        assertEq(balBob, 11 ether);
+    }
+    
+    //test auto end when view a survey 
+    function test_view_autoEnd() public {
+        string[] memory options = new string[](3);
+        options[0] = "red";
+        options[1] = "blue";
+        options[2] = "green";
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        surveyContract.vote("Survey 1", 1);
+        vm.stopPrank();
+
+        vm.warp(startTime + 1 days);
+        //vm.expectRevert(bytes("Survey is expired"));
+
+        vm.startPrank(charlie);
+        surveyContract.viewSurvey("Survey 1");
+        vm.stopPrank();
+
+        (
+            address owner,
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.getSurvey("Survey 1");
+
+        assertEq(endTime <= block.timestamp, true); // ensure the survey has ended
+        assertEq(answers[0], 0);
+        assertEq(answers[1], 1); //we have ensured only 2 votes were cast because the survey ended
+        assertEq(ethReward, 0 ether); //check the reward has been paid out
+        uint256 bal = address(surveyContract).balance;
+        assertEq(bal, 0); //check the contract has no balance
+        uint256 balBob = bob.balance;
+        uint256 balAlice = alice.balance;
+        assertEq(balAlice, 9 ether); 
+        assertEq(balBob, 11 ether);
+    }
+
+    //test two surveys with the same name
+    function test_same_survey() public {
+        string[] memory options = new string[](3);
+        options[0] = "red";
+        options[1] = "blue";
+        options[2] = "green";
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        vm.stopPrank();
+
+        vm.expectRevert(bytes("Survey with the same name already exist")); 
+
+        vm.startPrank(bob);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        vm.stopPrank();
+
+       
+
+    }
+
+    //not registered user can't create
+    function not_registered_user_cannot_create() public {
+        string[] memory options = new string[](3);
+        options[0] = "red";
+        options[1] = "blue";
+        options[2] = "green";
+
+        vm.expectRevert(bytes("Survey with the same name already exist")); 
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        vm.stopPrank();
+
+    }
+
+
     //////////////////////////////////////////////////////////////// PENETRATION TESTS BELOW THIS LINE
 
     function test_selfDestruct() public{
@@ -226,6 +387,8 @@ contract SmartSurveyTest is Test {
         require(balance > 10, "The contract did not lose any ether"); //the attacker was unable rob us
        
     }
+
+    
 
     function test_timeStampManip() public {
         string[] memory options = new string[](2); 
