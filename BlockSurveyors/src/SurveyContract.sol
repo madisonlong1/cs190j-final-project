@@ -140,7 +140,7 @@ contract SmartSurvey {
         require(bytes(_surveyName).length > 0, "Survey name cannot be empty");
         require(bytes(_question).length > 0, "Question cannot be empty");
         require(_solutions.length > 0, "Solutions cannot be empty");
-        //require(_duration > 0, "Duration must be greater than 0");
+        require(_duration > 0, "Duration must be greater than 0");
         require(_numAllowedResponses > 0, "Number of allowed responses must be greater than 0");
         require(msg.value > 0, "Reward must be greater than 0");
 
