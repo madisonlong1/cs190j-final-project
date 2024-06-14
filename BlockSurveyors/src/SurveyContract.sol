@@ -109,7 +109,15 @@ contract SmartSurvey {
         }
     }  
 
-    function endNow(string memory _surveyName) public noReentrancy{
+    function endByOwner(string memory _surveyName) public {
+        Survey storage thisSurvey = user_surveys[_surveyName];
+        require(msg.sender == thisSurvey.owner, 'only the owner can end a survey early');
+        thisSurvey.numAllowedResponses = 0;
+        thisSurvey.endTime = block.timestamp;
+        endNow(_surveyName);
+    }
+
+    function endNow(string memory _surveyName) private noReentrancy{
         Survey storage thisSurvey = user_surveys[_surveyName];
         require(msg.sender == thisSurvey.owner, 'only the owner can end a survey early');
         thisSurvey.numAllowedResponses = 0;
@@ -132,10 +140,13 @@ contract SmartSurvey {
                           string memory _question, 
                           string[] memory _solutions, 
                           uint256 _duration, 
-                          uint256 _numAllowedResponses) 
+                          uint256 _numAllowedResponses,
+                          uint256 _password) 
         public noReentrancy payable {
-        require(user_surveys[_surveyName].owner == address(0), "Survey with the same name already exist");
         require(users[msg.sender].userAddress != address(0), "User not registered"); //make this function is exclusivly accessable to those who are registered already
+        require(users[msg.sender].password == _password, "Wrong password");
+        require(user_surveys[_surveyName].owner == address(0), "Survey with the same name already exist");
+        
         
         require(bytes(_surveyName).length > 0, "Survey name cannot be empty");
         require(bytes(_question).length > 0, "Question cannot be empty");
