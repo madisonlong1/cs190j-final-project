@@ -9,6 +9,7 @@ import {SmartSurvey} from "../src/SurveyContract.sol";
 import {SelfDestructAttacker} from "../src/Attacker1.sol";
 import {overflowAttacker} from "../src/Attacker2.sol";
 import {reentrancyAttacker} from "../src/Attacker3.sol";
+import {reentrancyAttacker2} from "../src/Attacker3-2.sol";
 
 contract SmartSurveyTest is Test {
     SmartSurvey public surveyContract;
@@ -74,7 +75,7 @@ contract SmartSurveyTest is Test {
         options[1] = "Option 2";
 
         vm.startPrank(alice); //alice will create survey 1 ans we will test if it actually worked
-        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2,1234);
         vm.stopPrank();
 
         // Retrieve survey data
@@ -109,7 +110,7 @@ contract SmartSurveyTest is Test {
         options[2] = "green";
 
         vm.startPrank(alice);
-        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 4);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 4,1234);
         surveyContract.vote("Survey 1", 1);
         vm.stopPrank();
         //Alice votes for blue
@@ -155,7 +156,7 @@ contract SmartSurveyTest is Test {
         options[1] = "yes";
         deal(charlie, 10 ether); //charlie will be paid for his participation
         vm.startPrank(charlie);
-        surveyContract.create_survey{value: 10 ether}("Survey 2", "Do you support more funding for local schools?", options, 100000, 2);
+        surveyContract.create_survey{value: 10 ether}("Survey 2", "Do you support more funding for local schools?", options, 100000, 2,9876);
         surveyContract.vote("Survey 2", 1);
         vm.stopPrank();
 
@@ -205,7 +206,7 @@ contract SmartSurveyTest is Test {
         vm.startPrank(alice);
         vm.expectRevert(bytes("Reward must be greater than 0")); //we expect a revert because the survey 
                                                                  //is being called with missing paramertrs (the eth payment)
-        surveyContract.create_survey("Survey 1", "Are you a Dog person, or a Cat person?", options, 10, 12);
+        surveyContract.create_survey("Survey 1", "Are you a Dog person, or a Cat person?", options, 10, 12,1234);
         vm.stopPrank();
     }
     //test view survey
@@ -216,7 +217,7 @@ contract SmartSurveyTest is Test {
         options[2] = "green";
 
         vm.startPrank(alice);
-        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4,1234);
         vm.stopPrank();
 
         vm.startPrank(charlie);
@@ -248,7 +249,7 @@ contract SmartSurveyTest is Test {
         options[2] = "green";
 
         vm.startPrank(alice);
-        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4,1234);
         vm.stopPrank();
 
         vm.startPrank(bob);
@@ -294,7 +295,7 @@ contract SmartSurveyTest is Test {
         options[2] = "green";
 
         vm.startPrank(alice);
-        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4,1234);
         vm.stopPrank();
 
         vm.startPrank(bob);
@@ -340,13 +341,13 @@ contract SmartSurveyTest is Test {
         options[2] = "green";
 
         vm.startPrank(alice);
-        surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4,1234);
         vm.stopPrank();
 
         vm.expectRevert(bytes("Survey with the same name already exist")); 
 
         vm.startPrank(bob);
-        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4,5678);
         vm.stopPrank();
     }
 
@@ -360,10 +361,23 @@ contract SmartSurveyTest is Test {
         vm.expectRevert(bytes("User not registered"));
 
         vm.startPrank(unregister);
-        surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
+        surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4,1234);
         vm.stopPrank();
     }
 
+    //registered user with wrong password can't create
+    function test_registered_user_wrong_password() public {
+        string[] memory options = new string[](3);
+        options[0] = "red";
+        options[1] = "blue";
+        options[2] = "green";
+
+        vm.expectRevert(bytes("Wrong password"));
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4,114514);
+        vm.stopPrank();
+    }
 
     //////////////////////////////////////////////////////////////// PENETRATION TESTS BELOW THIS LINE
 
@@ -374,7 +388,7 @@ contract SmartSurveyTest is Test {
         options[0] = "no";
         options[1] = "yes";
         vm.startPrank(alice);
-        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, 12, 2);
+        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, 12, 2,1234);
         vm.stopPrank();
 
         //make an attacker and use it
@@ -401,7 +415,7 @@ contract SmartSurveyTest is Test {
         vm.startPrank(alice);
         vm.expectRevert();
         uint256 overflow = type(uint256).max + 1 - block.timestamp; //set the start time to 10 seconds from now
-        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, overflow, 3);
+        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, overflow, 3,1234);
         vm.stopPrank();
     }
 
@@ -416,7 +430,7 @@ contract SmartSurveyTest is Test {
         string[] memory options = new string[](2); 
         options[0] = "no";
         options[1] = "yes";
-        surveyContract.create_survey{value: 50 ether}("Local School Poll", "Do you support more funding for local schools?", options, 10, 3);
+        surveyContract.create_survey{value: 50 ether}("Local School Poll", "Do you support more funding for local schools?", options, 10, 3,1234);
         vm.stopPrank();
 
         // Deploy the reentrancy attacker contract
@@ -434,11 +448,30 @@ contract SmartSurveyTest is Test {
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }    
 
-   function testPrivateAccess() public {
+   function testReentrancyAttack_endAuto() public {
         vm.startPrank(alice);
-        //need to be complete
+        deal(alice, 50 ether);
+        string[] memory options = new string[](2); 
+        options[0] = "no";
+        options[1] = "yes";
+        surveyContract.create_survey{value: 50 ether}("Local School Poll", "Do you support more funding for local schools?", options, 10, 3,1234);
         vm.stopPrank();
 
+        vm.warp(startTime + 1 days);
+        
+        // Deploy the reentrancy attacker contract
+        reentrancyAttacker2 attacker = new reentrancyAttacker2(surveyContract, "BlockChainClass");
+        deal(address(attacker), 100 ether); //pay the attacker so it can preform the attack and attempt to repeatedly withdraw the reward
+        vm.startPrank(address(attacker));
+        vm.expectRevert();
+        attacker.attack{value: 100 ether}();// attacker will attempt to repeatedly withdraw the reward from the survey contract
+        vm.stopPrank();
+
+        //Check the contract's balance and state
+        uint256 balance = address(surveyContract).balance;
+        uint256 attackerBalance = address(attacker).balance;
+        assertEq(balance, 50 ether, "Balance should be 50 ether after attempted reentrancy attack"); // the contract should still have 50 ether from alice as her poll is not over
+        assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }   
 
     //2) write 5 more functional test cases // 1) expired survey ends when call view and vote //Yicong
