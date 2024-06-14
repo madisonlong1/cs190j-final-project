@@ -49,6 +49,7 @@ contract SmartSurvey {
 
     // Mapping to store registered users for login
     mapping(address => registered_user) private users; //keep track of all registered users
+    //mapping(address => uint256) private register_status;
 
     mapping(string => uint256) private balances; //bank for ether rewards, surveyName -> balance
 
@@ -75,7 +76,8 @@ contract SmartSurvey {
         });
         
         users[msg.sender] = User; //map users address to their struct
-        emit UserRegistered(_username, msg.sender);
+        //register_status[msg.sender] = 99;
+        //emit UserRegistered(_username, msg.sender);
     }
 
     function getUser(address userAddress) public view returns (address, string memory, uint256) {
@@ -133,7 +135,6 @@ contract SmartSurvey {
                           uint256 _duration, 
                           uint256 _numAllowedResponses) 
         public noReentrancy payable {
-            
         require(user_surveys[_surveyName].owner == address(0), "Survey with the same name already exist");
         require(users[msg.sender].userAddress != address(0), "User not registered"); //make this function is exclusivly accessable to those who are registered already
         

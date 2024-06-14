@@ -41,6 +41,10 @@ contract SmartSurveyTest is Test {
         vm.startPrank(charlie);
         surveyContract.registerUser("charlie1", 9876);
         vm.stopPrank();
+
+        //unregistered user
+        vm.startPrank(unregister);
+        vm.stopPrank();
     }
     // test if the register user works properly
     function test_registerUser() public {
@@ -347,16 +351,17 @@ contract SmartSurveyTest is Test {
     }
 
     //not registered user can't create
-    function not_registered_user_cannot_create() public {
+    function test_not_registered_user_cannot_create() public {
         string[] memory options = new string[](3);
         options[0] = "red";
         options[1] = "blue";
-        options[2] = "green"; 
+        options[2] = "green";
+
+        vm.expectRevert(bytes("User not registered"));
 
         vm.startPrank(unregister);
         surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4);
         vm.stopPrank();
-
     }
 
 
