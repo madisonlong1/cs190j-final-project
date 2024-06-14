@@ -109,7 +109,15 @@ contract SmartSurvey {
         }
     }  
 
-    function endNow(string memory _surveyName) public noReentrancy{
+    function endByOwner(string memory _surveyName) public {
+        Survey storage thisSurvey = user_surveys[_surveyName];
+        require(msg.sender == thisSurvey.owner, 'only the owner can end a survey early');
+        thisSurvey.numAllowedResponses = 0;
+        thisSurvey.endTime = block.timestamp;
+        endNow(_surveyName);
+    }
+
+    function endNow(string memory _surveyName) private noReentrancy{
         Survey storage thisSurvey = user_surveys[_surveyName];
         require(msg.sender == thisSurvey.owner, 'only the owner can end a survey early');
         thisSurvey.numAllowedResponses = 0;

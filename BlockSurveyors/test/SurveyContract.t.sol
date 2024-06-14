@@ -165,7 +165,7 @@ contract SmartSurveyTest is Test {
         vm.stopPrank();
 
         vm.startPrank(charlie);
-        surveyContract.endNow("Survey 2");
+        surveyContract.endByOwner("Survey 2");
         vm.stopPrank();
 
         vm.startPrank(bob);
