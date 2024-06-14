@@ -434,7 +434,12 @@ contract SmartSurveyTest is Test {
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }    
 
-   
+   function testPrivateAccess() public {
+        vm.startPrank(alice);
+        //need to be complete
+        vm.stopPrank();
+
+    }   
 
     //2) write 5 more functional test cases // 1) expired survey ends when call view and vote //Yicong
     //test ViewSurvey, sendreward, edgecases(things like invalid information)

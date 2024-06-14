@@ -76,7 +76,6 @@ contract SmartSurvey {
         });
         
         users[msg.sender] = User; //map users address to their struct
-        //register_status[msg.sender] = 99;
         //emit UserRegistered(_username, msg.sender);
     }
 
@@ -86,7 +85,7 @@ contract SmartSurvey {
     } 
     
 
-    function vote(string memory _surveyName, uint256 option) public noReentrancy {
+    function vote(string memory _surveyName, uint256 option) public{
         Survey storage thisSurvey = user_surveys[_surveyName];
 
         if(thisSurvey.endTime < block.timestamp ){
@@ -118,7 +117,7 @@ contract SmartSurvey {
         sendReward(_surveyName);
     }
 
-    function endAuto(string memory _surveyName) private{
+    function endAuto(string memory _surveyName) private noReentrancy{
         Survey storage thisSurvey = user_surveys[_surveyName];
         require(thisSurvey.numAllowedResponses > 0, "Survey is closed");
         thisSurvey.numAllowedResponses = 0;
