@@ -10,6 +10,7 @@ import {SelfDestructAttacker} from "../src/Attacker1.sol";
 import {overflowAttacker} from "../src/Attacker2.sol";
 import {reentrancyAttacker} from "../src/Attacker3.sol";
 import {reentrancyAttacker2} from "../src/Attacker3-2.sol";
+import {reentrancyAttacker3} from "../src/Attacker3-3.sol";
 
 contract SmartSurveyTest is Test {
     SmartSurvey public surveyContract;
@@ -461,6 +462,30 @@ contract SmartSurveyTest is Test {
         
         // Deploy the reentrancy attacker contract
         reentrancyAttacker2 attacker = new reentrancyAttacker2(surveyContract, "BlockChainClass");
+        deal(address(attacker), 100 ether); //pay the attacker so it can preform the attack and attempt to repeatedly withdraw the reward
+        vm.startPrank(address(attacker));
+        vm.expectRevert();
+        attacker.attack{value: 100 ether}();// attacker will attempt to repeatedly withdraw the reward from the survey contract
+        vm.stopPrank();
+
+        //Check the contract's balance and state
+        uint256 balance = address(surveyContract).balance;
+        uint256 attackerBalance = address(attacker).balance;
+        assertEq(balance, 50 ether, "Balance should be 50 ether after attempted reentrancy attack"); // the contract should still have 50 ether from alice as her poll is not over
+        assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
+    }   
+
+    function testReentrancyAttack_endNow() public {
+        vm.startPrank(alice);
+        deal(alice, 50 ether);
+        string[] memory options = new string[](2); 
+        options[0] = "no";
+        options[1] = "yes";
+        surveyContract.create_survey{value: 50 ether}("Local School Poll", "Do you support more funding for local schools?", options, 10, 3,1234);
+        vm.stopPrank();
+        
+        // Deploy the reentrancy attacker contract
+        reentrancyAttacker3 attacker = new reentrancyAttacker3(surveyContract, "BlockChainClass");
         deal(address(attacker), 100 ether); //pay the attacker so it can preform the attack and attempt to repeatedly withdraw the reward
         vm.startPrank(address(attacker));
         vm.expectRevert();
