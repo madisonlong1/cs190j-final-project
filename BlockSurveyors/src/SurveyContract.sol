@@ -49,6 +49,7 @@ contract SmartSurvey {
 
     // Mapping to store registered users for login
     mapping(address => registered_user) private users; //keep track of all registered users
+    //mapping(address => uint256) private register_status;
 
     mapping(string => uint256) private balances; //bank for ether rewards, surveyName -> balance
 
@@ -75,7 +76,7 @@ contract SmartSurvey {
         });
         
         users[msg.sender] = User; //map users address to their struct
-        emit UserRegistered(_username, msg.sender);
+        //emit UserRegistered(_username, msg.sender);
     }
 
     function getUser(address userAddress) public view returns (address, string memory, uint256) {
@@ -84,13 +85,19 @@ contract SmartSurvey {
     } 
     
 
-    function vote(string memory _surveyName, uint256 option) public noReentrancy {
+    function vote(string memory _surveyName, uint256 option) public{
         Survey storage thisSurvey = user_surveys[_surveyName];
+
+        if(thisSurvey.endTime < block.timestamp ){
+            endAuto(thisSurvey.surveyName);
+            return;
+        }
+        
         require(thisSurvey.numAllowedResponses > 0, "Survey is closed");
         require(!thisSurvey.hasVoted[msg.sender], "User has already voted");
         require(thisSurvey.owner != address(0), "Survey does not exist");//need to be fixed
         require(option < thisSurvey.solutions.length, "Invalid option");
-        require(thisSurvey.endTime > block.timestamp, "Survey is closed");
+        require(thisSurvey.endTime > block.timestamp, "Survey is expired");
         
         thisSurvey.hasVoted[msg.sender] = true; //mark the user as having voted
         thisSurvey.voters.push(msg.sender); //add the user to the list of voters (not implemented yet
@@ -110,6 +117,15 @@ contract SmartSurvey {
         sendReward(_surveyName);
     }
 
+    function endAuto(string memory _surveyName) private noReentrancy{
+        Survey storage thisSurvey = user_surveys[_surveyName];
+        require(thisSurvey.numAllowedResponses > 0, "Survey is closed");
+        thisSurvey.numAllowedResponses = 0;
+        thisSurvey.endTime = block.timestamp;
+        sendReward(_surveyName);
+        //require(false, "Survey is expired");
+    }
+
 
     function create_survey(
                           string memory _surveyName, 
@@ -118,6 +134,7 @@ contract SmartSurvey {
                           uint256 _duration, 
                           uint256 _numAllowedResponses) 
         public noReentrancy payable {
+        require(user_surveys[_surveyName].owner == address(0), "Survey with the same name already exist");
         require(users[msg.sender].userAddress != address(0), "User not registered"); //make this function is exclusivly accessable to those who are registered already
         
         require(bytes(_surveyName).length > 0, "Survey name cannot be empty");
@@ -147,19 +164,35 @@ contract SmartSurvey {
         balances[_surveyName] = msg.value;
     }
 
-    function viewSurvey(string memory _surveyName) public {
+    function viewSurvey(string memory _surveyName) public  returns 
+    (string memory, string memory, string[] memory,uint256[] memory, uint256, uint256, uint256, uint256){
+
         Survey storage thisSurvey = user_surveys[_surveyName];
+        if(thisSurvey.endTime < block.timestamp ){
+            endAuto(thisSurvey.surveyName);
+        }
         require(thisSurvey.owner != address(0), "Survey does not exist");//need to be fixed
+
+        return (
+        thisSurvey.surveyName, 
+        thisSurvey.question,
+        thisSurvey.solutions, 
+        thisSurvey.answers,
+        thisSurvey.numAllowedResponses,
+        thisSurvey.startTime, 
+        thisSurvey.endTime,  
+        thisSurvey.ethReward
+        );
        
-        emit SurveyDetails(
-                            thisSurvey.surveyName, 
-                            thisSurvey.question, 
-                            thisSurvey.solutions, 
-                            thisSurvey.numAllowedResponses,
-                            thisSurvey.startTime, 
-                            thisSurvey.endTime, 
-                            thisSurvey.ethReward
-                            );   
+        // emit SurveyDetails(
+        //                     thisSurvey.surveyName, 
+        //                     thisSurvey.question, 
+        //                     thisSurvey.solutions, 
+        //                     thisSurvey.numAllowedResponses,
+        //                     thisSurvey.startTime, 
+        //                     thisSurvey.endTime, 
+        //                     thisSurvey.ethReward
+        //                     );   
     }
 
     //function to return the values of a 
