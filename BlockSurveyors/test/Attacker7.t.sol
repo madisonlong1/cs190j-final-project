@@ -36,7 +36,7 @@ contract Attacker7Test is Test {
         vm.startPrank(alice);
         vm.expectRevert();
         uint256 overflow = type(uint256).min - 1 + block.timestamp;
-        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, overflow, 3);
+        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, overflow, 3, 1234);
         vm.stopPrank();
 
     }
