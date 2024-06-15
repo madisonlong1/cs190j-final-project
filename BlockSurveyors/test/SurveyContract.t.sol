@@ -404,8 +404,8 @@ contract SmartSurveyTest is Test {
 
     //////////////////////////////////////////////////////////////// PENETRATION TESTS BELOW THIS LINE
 
+    // test whether the self destruct attacker
     function test_selfDestruct() public{
-
         //setup the survey
         string[] memory options = new string[](2); 
         options[0] = "no";
@@ -420,14 +420,14 @@ contract SmartSurveyTest is Test {
        
         deal(attackerAddr, 1 ether); //pay the attacker
         vm.startPrank(attackerAddr);
-        attackerSD.attack();
+        attackerSD.attack(); // attacker will attempt to self destruct the survey contract
         vm.stopPrank();
         uint256 balance = address(surveyContract).balance;
         require(balance > 10, "The contract did not lose any ether"); //the attacker was unable rob us
        
     }
 
-    
+    // test the overflow attacker
     function test_overflowAttacker() public {
         overflowAttacker attacker = new overflowAttacker(surveyContract);
         deal(address(attacker), 10 ether);
@@ -439,6 +439,7 @@ contract SmartSurveyTest is Test {
         attacker.attack();
     }
 
+    // test the reentrancy of end survey attacker
     function testReentrancyAttack() public {
         // This test sees the attacker contract register itself, create a survey, vote on the survey, and then end the survey early
         // The attacker contract will then attempt to re-enter the survey contract and claim the reward repeatedly 
@@ -468,7 +469,11 @@ contract SmartSurveyTest is Test {
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }    
 
+    // test the reentrancy of vote attacker
    function testReentrancyAttack_endAuto() public {
+        // this attacker tries to do reentrancy attack on the vote
+        // so they vote multiple times to get more reward
+        // the transaction will revert because the function has protection against multi voting
         vm.startPrank(alice);
         deal(alice, 50 ether);
         string[] memory options = new string[](2); 
@@ -483,7 +488,7 @@ contract SmartSurveyTest is Test {
         reentrancyAttacker2 attacker = new reentrancyAttacker2(surveyContract, "BlockChainClass");
         deal(address(attacker), 100 ether); //pay the attacker so it can preform the attack and attempt to repeatedly withdraw the reward
         vm.startPrank(address(attacker));
-        vm.expectRevert();
+        vm.expectRevert(); 
         attacker.attack{value: 100 ether}();// attacker will attempt to repeatedly withdraw the reward from the survey contract
         vm.stopPrank();
 
@@ -494,7 +499,10 @@ contract SmartSurveyTest is Test {
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }   
 
+    // test the reentrancy of view and get survey attacker
     function testReentrancyAttack_endNow() public {
+        // this attacker tries to do reentrancy attack on the vote, view and getSurvey
+        // the transaction will revert because the function has protection against reentrancy
         vm.startPrank(alice);
         deal(alice, 50 ether);
         string[] memory options = new string[](2); 
@@ -520,7 +528,10 @@ contract SmartSurveyTest is Test {
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }   
 
+    // test the underflow attacker
     function test_underflow_attacker() public {
+        // this attacker tries to underflow number to manipulate survey endtime
+        // the transaction will revert because the function has protection against underflow
         underflowAttacker attacker = new underflowAttacker(surveyContract);
         deal(address(attacker), 10 ether);
         //attacker will attempt to create a survey underflow num, this action will be reverted
@@ -531,9 +542,10 @@ contract SmartSurveyTest is Test {
         attacker.attack();
     }
 
-
+    // test the password attacker
     function test_password_attack() public {
-        
+        // this attacker tries to access private data using unauthorized password
+        // the transaction will revert because we have match check for password and account
         string[] memory options = new string[](2); 
         options[0] = "no";
         options[1] = "yes";
@@ -548,8 +560,10 @@ contract SmartSurveyTest is Test {
         passwordAttack.attack();
     }
 
-
+    // test the wrong access to endByOwner
     function test_wrongAccessEndNow() public {
+        // this attacker tries to access endByOwner function using unauthorized account
+        // the transaction will revert because we have match check for survey and account
         string[] memory options = new string[](2);
         wrongAccessEndByOwner attacker_wrongAccessEndNow = new wrongAccessEndByOwner(surveyContract);
         deal(address(attacker_wrongAccessEndNow), 10 ether);
@@ -565,8 +579,11 @@ contract SmartSurveyTest is Test {
         attacker_wrongAccessEndNow.attack();
     }
 
-
+    // test the vote denial of service attacker
     function test_voteDenialofService() public {
+        // this attacker tries to deny the service by voting multiple times and occupy the system
+        // the transaction will revert because the function has protection against multiple voting
+        // and other user still can user system normally
         string[] memory options = new string[](2);
         voteDenialofService attacker_voteDenialofService = new voteDenialofService(surveyContract);
         deal(address(attacker_voteDenialofService), 10 ether);
@@ -575,16 +592,19 @@ contract SmartSurveyTest is Test {
         surveyContract.create_survey{value: 4 ether}("Survey 1", "What is your favorite color?", options, 3600, 2, 1234);
         vm.stopPrank();
 
+        // attacker start to attack
         vm.startPrank(address(attacker_voteDenialofService));
         vm.expectRevert(bytes("User has already voted"));
         vm.stopPrank();
 
         attacker_voteDenialofService.attack();
 
+        // the attacker fails and regular user can still use the system
         vm.startPrank(bob);
         surveyContract.vote("Survey 1", 0);
         vm.stopPrank();
 
+        // attacker's action did not affect result of distributing reward
         vm.startPrank(alice);
         surveyContract.vote("Survey 1", 0);
         surveyContract.endByOwner("Survey 1");
@@ -614,8 +634,12 @@ contract SmartSurveyTest is Test {
         assertEq(balAlice, 8 ether); //check alice has been paid for her particpation 
     }
 
-
+    // test the end denial of service attacker
     function test_endDenialofService() public {
+        // this attacker tries to deny the service by ending the survey multiple times
+        // and occupy the system
+        // the transaction will revert only owner can end the survey
+        // and other user still can user system normally
         string[] memory options = new string[](2);
         endDenialofService attacker_endDenialofService = new endDenialofService(surveyContract);
         deal(address(attacker_endDenialofService), 10 ether);
@@ -625,12 +649,14 @@ contract SmartSurveyTest is Test {
         surveyContract.vote("Survey 1", 1);
         vm.stopPrank();
 
+        // attacker start to attack
         vm.startPrank(address(attacker_endDenialofService));
         vm.expectRevert(bytes("only the owner can end a survey early"));
         vm.stopPrank();
 
         attacker_endDenialofService.attack();
 
+        // the attacker fails and regular user can still interact with the system
         vm.startPrank(alice);
         surveyContract.endByOwner("Survey 1");
         vm.stopPrank();
