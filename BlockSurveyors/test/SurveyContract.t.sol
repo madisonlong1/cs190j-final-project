@@ -417,10 +417,6 @@ contract SmartSurveyTest is Test {
 
     
     function test_overflowAttacker() public {
-        string[] memory options = new string[](2); 
-        options[0] = "no";
-        options[1] = "yes";
-
         overflowAttacker attacker = new overflowAttacker(surveyContract);
         deal(address(attacker), 10 ether);
         //attacker will attempt to create a survey with a start time that is in the past, this action will be reverted
@@ -513,10 +509,6 @@ contract SmartSurveyTest is Test {
     }   
 
     function test_underflow_attacker() public {
-        string[] memory options = new string[](2); 
-        options[0] = "no";
-        options[1] = "yes";
-
         underflowAttacker attacker = new underflowAttacker(surveyContract);
         deal(address(attacker), 10 ether);
         //attacker will attempt to create a survey underflow num, this action will be reverted
@@ -527,6 +519,7 @@ contract SmartSurveyTest is Test {
         attacker.attack();
     }
 
+
     function test_password_attack() public {
         
         string[] memory options = new string[](2); 
@@ -534,13 +527,13 @@ contract SmartSurveyTest is Test {
         options[1] = "yes";
 
         passwordAttacker passwordAttack = new passwordAttacker(surveyContract); // make an attacker
-        address attackerAddr = address(passwordAttack); //get attackers address
+        deal(address(passwordAttack), 10 ether);
 
-        vm.expectRevert();
-        vm.startPrank(address(attackerAddr));
-        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2, 1234);
+        vm.startPrank(address(passwordAttack));
+        vm.expectRevert("User not registered");
         vm.stopPrank();
 
+        passwordAttack.attack();
     }
 
 
