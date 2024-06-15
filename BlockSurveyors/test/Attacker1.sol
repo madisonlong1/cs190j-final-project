@@ -8,12 +8,12 @@ import {SmartSurvey} from "../src/SurveyContract.sol";
 // expectation: won't casue any issue as the survey contract 
 // is not vulnerable to selfdestruct attack
 contract SelfDestructAttacker {
-        SmartSurvey public surveyContract;
-        constructor(SmartSurvey _surveyContract) payable {
-            surveyContract = _surveyContract;
-        }
-        function attack() public {
-            address payable addr = payable(address(surveyContract)); //get the contracts address
-            selfdestruct(addr); //try to destroy it and send the funds to the contract
-        }
+    SmartSurvey public surveyContract;
+    constructor(SmartSurvey _surveyContract) payable {
+        surveyContract = _surveyContract;
     }
+    function attack() public {
+        address payable addr = payable(address(surveyContract)); //get the contracts address
+        selfdestruct(addr); //try to destroy it and send the funds to the contract
+    }
+}

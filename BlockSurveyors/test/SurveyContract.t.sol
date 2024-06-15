@@ -513,18 +513,18 @@ contract SmartSurveyTest is Test {
     }   
 
     function test_underflow_attacker() public {
-
         string[] memory options = new string[](2); 
         options[0] = "no";
         options[1] = "yes";
 
-        //alice will attempt to create a survey with a start time that is in the past, this action will be reverted
-        vm.startPrank(alice);
+        underflowAttacker attacker = new underflowAttacker(surveyContract);
+        deal(address(attacker), 10 ether);
+        //attacker will attempt to create a survey underflow num, this action will be reverted
+        vm.startPrank(address(attacker));
         vm.expectRevert();
-        uint256 overflow = type(uint256).min - 1 + block.timestamp;
-        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, overflow, 3, 1234);
         vm.stopPrank();
 
+        attacker.attack();
     }
 
     function test_password_attack() public {
