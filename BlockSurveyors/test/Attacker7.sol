@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 // underflow / overflow doesn't work starting 0.8
 
-import {SmartSurvey} from "../src/SurveyContract.sol"; //import game contract
+import {SmartSurvey} from "../src/SurveyContract.sol";
 
 contract underflowAttacker {
         SmartSurvey public surveyContract;

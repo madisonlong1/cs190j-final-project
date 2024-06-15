@@ -9,13 +9,13 @@ import {SmartSurvey} from "../src/SurveyContract.sol";
 import {SelfDestructAttacker} from "./Attacker1.sol";
 import {overflowAttacker} from "./Attacker2.sol";
 import {reentrancyAttacker} from "./Attacker3.sol";
-import {reentrancyAttacker2} from "./Attacker3-2.sol";
-import {reentrancyAttacker3} from "./Attacker3-3.sol";
+import {reentrancyAttacker2} from "./Attacker4.sol";
+import {reentrancyAttacker3} from "./Attacker5.sol";
+import {wrongAccessEndByOwner} from "./Attacker6.sol";
 import {underflowAttacker} from "./Attacker7.sol";
 import {passwordAttacker} from "./Attacker8.sol";
-import {wrongAccessEndByOwner} from "./Attacker4.sol";
-import {voteDenialofService} from "./Attacker5.sol";
-import {endDenialofService} from "./Attacker6.sol";
+import {voteDenialofService} from "./Attacker9.sol";
+import {endDenialofService} from "./Attacker10.sol";
 
 contract SmartSurveyTest is Test {
     SmartSurvey public surveyContract;

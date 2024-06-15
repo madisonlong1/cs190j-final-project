@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {SmartSurvey} from "../src/SurveyContract.sol"; //import game contract
+import {SmartSurvey} from "../src/SurveyContract.sol";
 
 contract overflowAttacker {
         SmartSurvey public surveyContract;

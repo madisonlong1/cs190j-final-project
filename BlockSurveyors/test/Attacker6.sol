@@ -3,9 +3,9 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol"; 
 
-contract endDenialofService {
-    // An attack contract about user try to cause a denial of service
-    // by calling the end function multiple times
+contract wrongAccessEndByOwner {
+    // An attack contract about user try to access 
+    // unauthorised function and data ()
     SmartSurvey public surveyContract;
 
     constructor(SmartSurvey _surveyContract) payable {
@@ -13,10 +13,7 @@ contract endDenialofService {
     }
 
     function attack() public {
-        surveyContract.registerUser("attacker", 1234); 
-        surveyContract.viewSurvey("Survey 1");
-        for (uint i = 0; i < 100; i++) {
-            surveyContract.endByOwner("Survey 1");
-        }       
+        surveyContract.registerUser("attacker", 1234);
+        surveyContract.endByOwner("Survey 1");       
     }
 }
