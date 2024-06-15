@@ -520,7 +520,7 @@ contract SmartSurveyTest is Test {
 
     }
 
-    function test_attacker8() public {
+    function password_attack() public {
         
         string[] memory options = new string[](2); 
         options[0] = "no";
