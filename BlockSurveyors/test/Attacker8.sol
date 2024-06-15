@@ -9,10 +9,7 @@ contract passwordAttacker {
             surveyContract = _surveyContract;
         }
         function attack() public {
-
-            
-            
-            
+          
         }
     }
     

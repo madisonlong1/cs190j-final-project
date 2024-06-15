@@ -6,13 +6,16 @@ import "forge-std/Vm.sol";
 
 import {SmartSurvey} from "../src/SurveyContract.sol";
 
-import {SelfDestructAttacker} from "../src/Attacker1.sol";
-import {overflowAttacker} from "../src/Attacker2.sol";
-import {reentrancyAttacker} from "../src/Attacker3.sol";
-import {reentrancyAttacker2} from "../src/Attacker3-2.sol";
-import {reentrancyAttacker3} from "../src/Attacker3-3.sol";
-import {underflowAttacker} from "../src/Attacker7.sol";
-import {passwordAttacker} from "../src/Attacker8.sol";
+import {SelfDestructAttacker} from "./Attacker1.sol";
+import {overflowAttacker} from "./Attacker2.sol";
+import {reentrancyAttacker} from "./Attacker3.sol";
+import {reentrancyAttacker2} from "./Attacker3-2.sol";
+import {reentrancyAttacker3} from "./Attacker3-3.sol";
+import {underflowAttacker} from "./Attacker7.sol";
+import {passwordAttacker} from "./Attacker8.sol";
+import {wrongAccessEndByOwner} from "./Attacker4.sol";
+import {voteDenialofService} from "./Attacker5.sol";
+import {endDenialofService} from "./Attacker6.sol";
 
 contract SmartSurveyTest is Test {
     SmartSurvey public surveyContract;
@@ -50,6 +53,9 @@ contract SmartSurveyTest is Test {
         vm.startPrank(unregister);
         vm.stopPrank();
     }
+
+    //////////////////////////////////////////////////////////////// FUNCTIONAL TESTS BELOW THIS LINE
+    
     // test if the register user works properly
     function test_registerUser() public {
 
@@ -152,7 +158,7 @@ contract SmartSurveyTest is Test {
 
     }
 
-    //test endnow
+    //test endByOwner
     function test_Endnow() public {
         string[] memory options = new string[](2);
         options[0] = "no";
@@ -212,6 +218,7 @@ contract SmartSurveyTest is Test {
         surveyContract.create_survey("Survey 1", "Are you a Dog person, or a Cat person?", options, 10, 12,1234);
         vm.stopPrank();
     }
+
     //test view survey
     function test_view_survey() public {
         string[] memory options = new string[](3);
@@ -244,6 +251,7 @@ contract SmartSurveyTest is Test {
         assertEq(ethReward, 1 ether);
 
     }
+
     //test auto end when vote for a survey  
     function test_vote_autoEnd() public {
         string[] memory options = new string[](3);
@@ -408,18 +416,19 @@ contract SmartSurveyTest is Test {
     }
 
     
-
-    function test_timeStampManip() public {
+    function test_overflowAttacker() public {
         string[] memory options = new string[](2); 
         options[0] = "no";
         options[1] = "yes";
 
-        //alice will attempt to create a survey with a start time that is in the past, this action will be reverted
-        vm.startPrank(alice);
+        overflowAttacker attacker = new overflowAttacker(surveyContract);
+        deal(address(attacker), 10 ether);
+        //attacker will attempt to create a survey with a start time that is in the past, this action will be reverted
+        vm.startPrank(address(attacker));
         vm.expectRevert();
-        uint256 overflow = type(uint256).max + 1 - block.timestamp; //set the start time to 10 seconds from now
-        surveyContract.create_survey{value: 5 ether}("Local School Poll", "Do you support more funding for local schools?", options, overflow, 3,1234);
         vm.stopPrank();
+
+        attacker.attack();
     }
 
     function testReentrancyAttack() public {
@@ -486,9 +495,7 @@ contract SmartSurveyTest is Test {
         surveyContract.create_survey{value: 50 ether}("Local School Poll", "Do you support more funding for local schools?", options, 10, 3,1234);
         vm.stopPrank();
         
-
         vm.warp(startTime + 1 days);
-
 
         // Deploy the reentrancy attacker contract
         reentrancyAttacker3 attacker = new reentrancyAttacker3(surveyContract, "BlockChainClass");
@@ -537,14 +544,111 @@ contract SmartSurveyTest is Test {
     }
 
 
+    function test_wrongAccessEndNow() public {
+        string[] memory options = new string[](2);
+        wrongAccessEndByOwner attacker_wrongAccessEndNow = new wrongAccessEndByOwner(surveyContract);
+        deal(address(attacker_wrongAccessEndNow), 10 ether);
 
-    //2) write 5 more functional test cases // 1) expired survey ends when call view and vote //Yicong
-    //test ViewSurvey, sendreward, edgecases(things like invalid information)
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2, 1234);
+        vm.stopPrank();
+        
+        vm.startPrank(address(attacker_wrongAccessEndNow));
+        vm.expectRevert(bytes("only the owner can end a survey early"));
+        vm.stopPrank();
 
-    //3) 7 write More penetration test cases      //Sherry-3  Jason-3, Yicong-1
-    // Denial of Service, accessing private data, front running
+        attacker_wrongAccessEndNow.attack();
+    }
 
-    //4) README deployment instructions and Documentation, see instructions for details
 
-    //5) Report (2 pages each)
+    function test_voteDenialofService() public {
+        string[] memory options = new string[](2);
+        voteDenialofService attacker_voteDenialofService = new voteDenialofService(surveyContract);
+        deal(address(attacker_voteDenialofService), 10 ether);
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 4 ether}("Survey 1", "What is your favorite color?", options, 3600, 2, 1234);
+        vm.stopPrank();
+
+        vm.startPrank(address(attacker_voteDenialofService));
+        vm.expectRevert(bytes("User has already voted"));
+        vm.stopPrank();
+
+        attacker_voteDenialofService.attack();
+
+        vm.startPrank(bob);
+        surveyContract.vote("Survey 1", 0);
+        vm.stopPrank();
+
+        vm.startPrank(alice);
+        surveyContract.vote("Survey 1", 0);
+        surveyContract.endByOwner("Survey 1");
+        vm.stopPrank();
+     
+        (
+            address owner,
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.getSurvey("Survey 1");
+
+        assertEq(endTime <= block.timestamp, true); // ensure the survey has ended
+        assertEq(answers[0], 2);
+        assertEq(answers[1], 0); 
+        assertEq(ethReward, 0 ether); //check the reward has been paid out
+        uint256 bal = address(surveyContract).balance;
+        assertEq(bal, 0); //check the contract has no balance
+        uint256 balBob = bob.balance;
+        uint256 balAlice = alice.balance;
+        assertEq(balBob, 12 ether); //check bob has been paid for his particpation 
+        assertEq(balAlice, 8 ether); //check alice has been paid for her particpation 
+    }
+
+
+    function test_endDenialofService() public {
+        string[] memory options = new string[](2);
+        endDenialofService attacker_endDenialofService = new endDenialofService(surveyContract);
+        deal(address(attacker_endDenialofService), 10 ether);
+
+        vm.startPrank(alice);
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2, 1234);
+        surveyContract.vote("Survey 1", 1);
+        vm.stopPrank();
+
+        vm.startPrank(address(attacker_endDenialofService));
+        vm.expectRevert(bytes("only the owner can end a survey early"));
+        vm.stopPrank();
+
+        attacker_endDenialofService.attack();
+
+        vm.startPrank(alice);
+        surveyContract.endByOwner("Survey 1");
+        vm.stopPrank();
+
+        (
+            address owner,
+            string memory surveyName,
+            string memory question,
+            string[] memory surveyOptions,
+            uint256[] memory answers,
+            uint256 numAllowedResponses,
+            uint256 startTime,
+            uint256 endTime,
+            uint256 ethReward
+        ) = surveyContract.getSurvey("Survey 1");
+
+        assertEq(endTime <= block.timestamp, true); // ensure the survey has ended
+        assertEq(answers[0], 0);
+        assertEq(answers[1], 1); 
+        assertEq(ethReward, 0 ether); //check the reward has been paid out
+        uint256 bal = address(surveyContract).balance;
+        assertEq(bal, 0); //check the contract has no balance
+        uint256 balAlice = alice.balance;
+        assertEq(balAlice, 10 ether); //check alice has been paid
+    }
 }

@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {SmartSurvey} from "../src/SurveyContract.sol"; //import game contract
+import {SmartSurvey} from "../src/SurveyContract.sol";
 
+// The attacker contract do selfdestruct attack
+// it sends all the funds to the survey contract
+// expectation: won't casue any issue as the survey contract 
+// is not vulnerable to selfdestruct attack
 contract SelfDestructAttacker {
         SmartSurvey public surveyContract;
         constructor(SmartSurvey _surveyContract) payable {
