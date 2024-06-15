@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-//import {Survey} from "../src/Survey.sol";
-
-//register function - address + custom username
-
 
 contract SmartSurvey {
-   bool internal locked; //for re entrancy guard
+   bool internal locked; //for reentrancy guard
     struct registered_user{
         address userAddress;
         string username;
@@ -25,7 +21,6 @@ contract SmartSurvey {
     struct Survey {
         
         address owner;
-        //uint256 id;
         mapping (address => bool) hasVoted; //mapping of addresses to whether or not they have voted true or false
         string surveyName; // name of the survey
         string question; // the question the user asks
@@ -37,46 +32,29 @@ contract SmartSurvey {
         uint256 ethReward; // amount of reward given to users
         address[] voters; // list of voters
     }
-    // modifier onlyOwner {
-    //     require(msg.sender == owner, 'call exclusive to owner');
-    //     _;
-    // }
     
     // Mapping to a survey surveyName -> Survey
     mapping(string => Survey) private user_surveys; 
-
     
-
     // Mapping to store registered users for login
     mapping(address => registered_user) private users; //keep track of all registered users
-    //mapping(address => uint256) private register_status;
+    
+    //bank for ether rewards, surveyName -> balance
+    mapping(string => uint256) private balances; 
 
-    mapping(string => uint256) private balances; //bank for ether rewards, surveyName -> balance
-
-    //events
-    event UserRegistered(string name, address userAddress); // Event to be emitted when a new user registers
-    event SurveyDetails( // Event to log survey details (simulating print)
-        string surveyName,
-        string question,
-        string[] solutions,
-        uint256 startTime,
-        uint256 endTime,
-        uint256 numAllowedResponses,
-        uint256 ethReward
-    );
    
     function registerUser(string memory _username, uint256 _password) public noReentrancy {
         require(users[msg.sender].userAddress == address(0), "User already registered"); // make sure user is not already registered
         require(bytes(_username).length > 0, "Username cannot be empty"); // make sure username is not empty
-    
-        registered_user memory User = registered_user({ //define an instance of the registered user struct
+
+        //define an instance of the registered user struct
+        registered_user memory User = registered_user({ 
             userAddress: msg.sender,
             username: _username,
             password: _password
         });
         
         users[msg.sender] = User; //map users address to their struct
-        //emit UserRegistered(_username, msg.sender);
     }
 
     function getUser(address userAddress) public view returns (address, string memory, uint256) {
@@ -104,7 +82,8 @@ contract SmartSurvey {
         thisSurvey.answers[option] += 1; //increment the number of votes for the option
         thisSurvey.numAllowedResponses = thisSurvey.numAllowedResponses - 1;//decrement the number of allowed responses remaining
         
-        if (thisSurvey.numAllowedResponses == 0) { //if the number of allowed responses is 0, close the survey
+        //if the number of allowed responses is 0, close the survey
+        if (thisSurvey.numAllowedResponses == 0) { 
             thisSurvey.endTime = block.timestamp;
         }
     }  
@@ -112,14 +91,11 @@ contract SmartSurvey {
     function endByOwner(string memory _surveyName) public {
         Survey storage thisSurvey = user_surveys[_surveyName];
         require(msg.sender == thisSurvey.owner, 'only the owner can end a survey early');
-        thisSurvey.numAllowedResponses = 0;
-        thisSurvey.endTime = block.timestamp;
         endNow(_surveyName);
     }
 
     function endNow(string memory _surveyName) private noReentrancy{
         Survey storage thisSurvey = user_surveys[_surveyName];
-        require(msg.sender == thisSurvey.owner, 'only the owner can end a survey early');
         thisSurvey.numAllowedResponses = 0;
         thisSurvey.endTime = block.timestamp;
         sendReward(_surveyName);
@@ -131,7 +107,6 @@ contract SmartSurvey {
         thisSurvey.numAllowedResponses = 0;
         thisSurvey.endTime = block.timestamp;
         sendReward(_surveyName);
-        //require(false, "Survey is expired");
     }
 
 
@@ -155,10 +130,6 @@ contract SmartSurvey {
         require(_numAllowedResponses > 0, "Number of allowed responses must be greater than 0");
         require(msg.value > 0, "Reward must be greater than 0");
 
-        //uint256[] memory ans;
-        // for (uint256 i = 0; i < _solutions.length; i++) { //initialize all answers to 0
-        //     ans.push(0);
-        // }
         Survey storage thisSurvey = user_surveys[_surveyName];
       
         thisSurvey.owner = msg.sender;
@@ -182,7 +153,7 @@ contract SmartSurvey {
         if(thisSurvey.endTime < block.timestamp ){
             endAuto(thisSurvey.surveyName);
         }
-        require(thisSurvey.owner != address(0), "Survey does not exist");//need to be fixed
+        require(thisSurvey.owner != address(0), "Survey does not exist");
 
         return (
         thisSurvey.surveyName, 
@@ -194,16 +165,6 @@ contract SmartSurvey {
         thisSurvey.endTime,  
         thisSurvey.ethReward
         );
-       
-        // emit SurveyDetails(
-        //                     thisSurvey.surveyName, 
-        //                     thisSurvey.question, 
-        //                     thisSurvey.solutions, 
-        //                     thisSurvey.numAllowedResponses,
-        //                     thisSurvey.startTime, 
-        //                     thisSurvey.endTime, 
-        //                     thisSurvey.ethReward
-        //                     );   
     }
 
     //function to return the values of a 
