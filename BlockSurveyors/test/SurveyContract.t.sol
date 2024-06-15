@@ -505,7 +505,7 @@ contract SmartSurveyTest is Test {
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }   
 
-    function underflow_attacker() public {
+    function test_underflow_attacker() public {
 
         string[] memory options = new string[](2); 
         options[0] = "no";
@@ -520,7 +520,7 @@ contract SmartSurveyTest is Test {
 
     }
 
-    function password_attack() public {
+    function test_password_attack() public {
         
         string[] memory options = new string[](2); 
         options[0] = "no";
