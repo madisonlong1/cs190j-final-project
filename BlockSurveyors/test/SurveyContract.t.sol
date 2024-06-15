@@ -11,6 +11,7 @@ import {overflowAttacker} from "../src/Attacker2.sol";
 import {reentrancyAttacker} from "../src/Attacker3.sol";
 import {reentrancyAttacker2} from "../src/Attacker3-2.sol";
 import {reentrancyAttacker3} from "../src/Attacker3-3.sol";
+import {passwordAttacker} from "../src/Attacker8.sol";
 
 contract SmartSurveyTest is Test {
     SmartSurvey public surveyContract;
@@ -484,6 +485,10 @@ contract SmartSurveyTest is Test {
         surveyContract.create_survey{value: 50 ether}("Local School Poll", "Do you support more funding for local schools?", options, 10, 3,1234);
         vm.stopPrank();
         
+
+        vm.warp(startTime + 1 days);
+
+
         // Deploy the reentrancy attacker contract
         reentrancyAttacker3 attacker = new reentrancyAttacker3(surveyContract, "BlockChainClass");
         deal(address(attacker), 100 ether); //pay the attacker so it can preform the attack and attempt to repeatedly withdraw the reward
@@ -498,6 +503,24 @@ contract SmartSurveyTest is Test {
         assertEq(balance, 50 ether, "Balance should be 50 ether after attempted reentrancy attack"); // the contract should still have 50 ether from alice as her poll is not over
         assertEq(100 ether, address(attacker).balance, "attacker gets 100 ether"); 
     }   
+
+    function test_attacker8() public {
+        
+        string[] memory options = new string[](2); 
+        options[0] = "no";
+        options[1] = "yes";
+
+        passwordAttacker passwordAttack = new passwordAttacker(surveyContract); // make an attacker
+        address attackerAddr = address(passwordAttack); //get attackers address
+
+        vm.expectRevert();
+        vm.startPrank(address(attackerAddr));
+        surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 2, 1234);
+        vm.stopPrank();
+
+    }
+
+
 
     //2) write 5 more functional test cases // 1) expired survey ends when call view and vote //Yicong
     //test ViewSurvey, sendreward, edgecases(things like invalid information)
