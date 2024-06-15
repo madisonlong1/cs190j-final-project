@@ -3,6 +3,10 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol";
 
+// An attack contract about user try to access
+// unauthorised password (accessing private data)
+// expectation: the transaction will revert
+// since the account didn't match the password
 contract passwordAttacker {
     SmartSurvey public surveyContract;
 

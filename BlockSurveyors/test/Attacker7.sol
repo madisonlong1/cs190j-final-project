@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol";
 
+// underflow attack on passing the underflow number
+// to manipulate the survey end time.
+// expectation: the transaction will revert
 contract underflowAttacker {
     SmartSurvey public surveyContract;
 

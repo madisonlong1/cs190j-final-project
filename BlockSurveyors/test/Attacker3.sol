@@ -3,6 +3,10 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol";
 
+// reentrancy attack on the endByOwner
+// so that the attacker can get reward multiple times
+// expectation: the function has protection against reentrancy
+// so the attack will fail
 contract reentrancyAttacker {
     SmartSurvey public smartSurvey;
     string public surveyName;
@@ -25,9 +29,6 @@ contract reentrancyAttacker {
 
         //end it
         smartSurvey.endByOwner(surveyName);
-        //return address(this).balance;
-       
-
     }
     //fallback function tries to keep collecting reward from the bank
     fallback() external payable {
