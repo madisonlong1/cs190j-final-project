@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol";
 
+// Overflow attack on passing the overflow number
+// to manipulate the survey end time.
+// expectation: the transaction will revert
 contract overflowAttacker {
     SmartSurvey public surveyContract;
     constructor(SmartSurvey _surveyContract) payable {

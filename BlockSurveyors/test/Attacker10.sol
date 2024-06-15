@@ -3,9 +3,12 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol"; 
 
-contract endDenialofService {
-    // An attack contract about user try to cause a denial of service
-    // by calling the end function multiple times
+// An attack contract about user try to cause a denial of service
+// by calling the end function multiple times
+// expectation: the attack will fail
+// since the function doesn't have lock
+// and trsaction will revert due to unauthorized access
+contract endDenialofService {  
     SmartSurvey public surveyContract;
 
     constructor(SmartSurvey _surveyContract) payable {

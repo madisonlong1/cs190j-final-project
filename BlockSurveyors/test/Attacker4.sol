@@ -3,6 +3,11 @@ pragma solidity ^0.8.24;
 
 import {SmartSurvey} from "../src/SurveyContract.sol"; 
 
+// reentrancy attack on the vote
+// so that the attacker can vote multiple times
+// to get more reward for each vote
+// expectation: the function has protection against reentrancy
+// so the attack will fail
 contract reentrancyAttacker2 {
     SmartSurvey public smartSurvey;
     string public surveyName;
@@ -27,7 +32,7 @@ contract reentrancyAttacker2 {
         smartSurvey.vote(surveyName, 1);
     }
 
-    //fallback function tries to keep collecting reward from the bank
+    //fallback function tries to vote multiple times
     fallback() external payable {
         if (address(smartSurvey).balance >= 1 ether) {
             smartSurvey.vote(surveyName, 1);
