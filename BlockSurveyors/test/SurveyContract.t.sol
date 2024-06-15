@@ -61,23 +61,26 @@ contract SmartSurveyTest is Test {
 
         // Retrieve user data //use the getUser function to get the user data
         (address userAddress, string memory username, uint256 password) = surveyContract.getUser(alice);
+        //all information should be the same as the user input when register
         assertEq(userAddress, alice);
         assertEq(username, "alice");
         assertEq(password, 1234);      
 
-        // Retrieve user data
+        // Retrieve user data //use the getUser function to get the user data
         (userAddress, username, password) = surveyContract.getUser(bob);
+        //all information should be the same as the user input when register
         assertEq(userAddress, bob);
         assertEq(username, "bob");
         assertEq(password, 5678);
 
         (userAddress, username, password) = surveyContract.getUser(charlie);
+        //all information should be the same as the user input when register
         assertEq(userAddress, charlie);
         assertEq(username, "charlie1");
         assertEq(password, 9876);
     }
 
-    //checks if create survey works properly
+    //checks if create survey create a survey and put it in the survey list
     function test_createSurvey() public {
         string[] memory options = new string[](2);
         options[0] = "Option 1";
@@ -100,7 +103,7 @@ contract SmartSurveyTest is Test {
             uint256 ethReward
         ) = surveyContract.getSurvey("Survey 1"); //get the full survey data
 
-        //now we check if the survey data is correct
+        //now we check if the survey data is correct, it should be the same as the user input
         assertEq(owner, alice);
         assertEq(surveyName, "Survey 1");
         assertEq(question, "What is your favorite color?");
@@ -113,12 +116,13 @@ contract SmartSurveyTest is Test {
 
     //test the vote function 
     function test_vote() public {
-          string[] memory options = new string[](3);
+        string[] memory options = new string[](3);
         options[0] = "red";
         options[1] = "blue";
         options[2] = "green";
 
         vm.startPrank(alice);
+        //alice create a survey
         surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 3600, 4,1234);
         surveyContract.vote("Survey 1", 1);
         vm.stopPrank();
@@ -146,6 +150,7 @@ contract SmartSurveyTest is Test {
             uint256 ethReward
         ) = surveyContract.getSurvey("Survey 1");
 
+        //check whether they vote for the correct survey
         assertEq(owner, alice);
         assertEq(surveyName, "Survey 1");
         assertEq(question, "What is your favorite color?");
@@ -158,7 +163,7 @@ contract SmartSurveyTest is Test {
 
     }
 
-    //test endByOwner
+    //test whehter it sends the reward correctly when a survey ends
     function test_Endnow() public {
         string[] memory options = new string[](2);
         options[0] = "no";
@@ -170,15 +175,18 @@ contract SmartSurveyTest is Test {
         vm.stopPrank();
 
         vm.startPrank(alice);
+        //alice vote for 1
         surveyContract.vote("Survey 2", 1);
         vm.stopPrank();
 
         vm.startPrank(charlie);
+        //charlie vote for 2
         surveyContract.endByOwner("Survey 2");
         vm.stopPrank();
 
         vm.startPrank(bob);
         vm.expectRevert(bytes("Survey is closed")); 
+        //bob vote for 1
         surveyContract.vote("Survey 2", 1);
         vm.stopPrank();
 
@@ -240,10 +248,11 @@ contract SmartSurveyTest is Test {
             uint256 startTime,
             uint256 endTime,
             uint256 ethReward
-        ) = surveyContract.viewSurvey("Survey 1");
+        ) = surveyContract.viewSurvey("Survey 1"); // retrieve the survey info
         vm.stopPrank();
 
-        assertEq(keccak256(abi.encodePacked(surveyName)) == keccak256(abi.encodePacked("Survey 1")), true); // ensure the survey has ended
+        //check whether it correctly retrieve the information we just entered
+        assertEq(keccak256(abi.encodePacked(surveyName)) == keccak256(abi.encodePacked("Survey 1")), true); 
         assertEq(keccak256(abi.encodePacked(question)) == keccak256(abi.encodePacked("What is your favorite color?")), true);
         assertEq(keccak256(abi.encodePacked(surveyOptions[0])) == keccak256(abi.encodePacked("red")), true);
         assertEq(keccak256(abi.encodePacked(surveyOptions[1])) == keccak256(abi.encodePacked("blue")), true);
@@ -252,7 +261,7 @@ contract SmartSurveyTest is Test {
 
     }
 
-    //test auto end when vote for a survey  
+    //test whether it automatically ends when voting for a survey that is expired
     function test_vote_autoEnd() public {
         string[] memory options = new string[](3);
         options[0] = "red";
@@ -267,8 +276,7 @@ contract SmartSurveyTest is Test {
         surveyContract.vote("Survey 1", 1);
         vm.stopPrank();
 
-        vm.warp(startTime + 1 days);
-        //vm.expectRevert(bytes("Survey is expired"));
+        vm.warp(startTime + 1 days);//make the survey expired
 
         vm.startPrank(charlie);
         surveyContract.vote("Survey 1", 1);
@@ -294,11 +302,11 @@ contract SmartSurveyTest is Test {
         assertEq(bal, 0); //check the contract has no balance
         uint256 balBob = bob.balance;
         uint256 balAlice = alice.balance;
-        assertEq(balAlice, 9 ether); 
-        assertEq(balBob, 11 ether);
+        assertEq(balAlice, 9 ether); //it should have 9 because alice use 1 ether to create a contract
+        assertEq(balBob, 11 ether);// it should have 11 because bob receive 1 ether as reward
     }
     
-    //test auto end when view a survey 
+    //test whether it automatically ends when viewing a survey that is expired 
     function test_view_autoEnd() public {
         string[] memory options = new string[](3);
         options[0] = "red";
@@ -340,23 +348,26 @@ contract SmartSurveyTest is Test {
         assertEq(bal, 0); //check the contract has no balance
         uint256 balBob = bob.balance;
         uint256 balAlice = alice.balance;
-        assertEq(balAlice, 9 ether); 
-        assertEq(balBob, 11 ether);
+        assertEq(balAlice, 9 ether); //it should have 9 because alice use 1 ether to create a contract
+        assertEq(balBob, 11 ether);// it should have 11 because bob receive 1 ether as reward
     }
 
-    //test two surveys with the same name
+    //test whether two surveys with the same name correctly generate an error
     function test_same_survey() public {
         string[] memory options = new string[](3);
         options[0] = "red";
         options[1] = "blue";
         options[2] = "green";
 
+        //alice creates survey 1
         vm.startPrank(alice);
         surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4,1234);
         vm.stopPrank();
 
-        vm.expectRevert(bytes("Survey with the same name already exist")); 
+        vm.expectRevert(bytes("Survey with the same name already exist")); //expect to get an error
+                                                                           // when they have the same name
 
+        //bob also creates survey 1
         vm.startPrank(bob);
         surveyContract.create_survey{value: 1 ether}("Survey 1", "What is your favorite color?", options, 1, 4,5678);
         vm.stopPrank();
@@ -368,10 +379,11 @@ contract SmartSurveyTest is Test {
         options[0] = "red";
         options[1] = "blue";
         options[2] = "green";
-
+        
+        //expecte to get error when unregistered user tries to create a survey
         vm.expectRevert(bytes("User not registered"));
 
-        vm.startPrank(unregister);
+        vm.startPrank(unregister); //unregister user tries to create
         surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4,1234);
         vm.stopPrank();
     }
@@ -383,9 +395,9 @@ contract SmartSurveyTest is Test {
         options[1] = "blue";
         options[2] = "green";
 
-        vm.expectRevert(bytes("Wrong password"));
+        vm.expectRevert(bytes("Wrong password"));//expect an error when enter a wrong password
 
-        vm.startPrank(alice);
+        vm.startPrank(alice);//alice create a survey but enter the wrong password
         surveyContract.create_survey{value: 10 ether}("Survey 1", "What is your favorite color?", options, 1, 4,114514);
         vm.stopPrank();
     }
